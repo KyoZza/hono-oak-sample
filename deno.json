@@ -1,0 +1,10 @@
+{
+  "tasks": {
+    "hono": "deno run --watch --allow-net server_hono.ts",
+    "oak": "deno run --watch --allow-net server_oak.ts"
+  },
+  "imports": {
+    "@hono/hono": "jsr:@hono/hono@^4.7.5",
+    "@oak/oak": "jsr:@oak/oak@^17.1.4"
+  }
+}
