@@ -19,6 +19,16 @@ app.get("/", (c) => {
 });
 
 app.get("/users", (c) => {
+  const nameFilter = c.req.query("name");
+
+  if (nameFilter) {
+    const users = Data.shared.users.filter(({ name }) =>
+      name.toLowerCase().includes(nameFilter.toLowerCase())
+    );
+
+    return c.json(users);
+  }
+
   return c.json(Data.shared.users);
 });
 

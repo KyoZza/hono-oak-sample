@@ -41,6 +41,17 @@ router
       "Welcome! Try GET /users, POST /users, or DELETE /users/:id";
   })
   .get("/users", (ctx) => {
+    const nameFilter = ctx.request.url.searchParams.get("name");
+
+    if (nameFilter) {
+      const users = Data.shared.users.filter(({ name }) =>
+        name.toLowerCase().includes(nameFilter.toLowerCase())
+      );
+
+      ctx.response.body = users;
+      return;
+    }
+
     ctx.response.body = Data.shared.users;
     ctx.response.type = "json"; //  Explicitly set type, though often inferred
   })
