@@ -51,11 +51,27 @@ app.post("/users", async (c) => {
   }
 });
 
+app.get("/users/:id", (c) => {
+  const id = parseInt(c.req.param("id"));
+
+  if (isNaN(id)) {
+    return c.json({ error: "Invalid user ID format." }, 400);
+  }
+
+  const user = Data.shared.getUser(id);
+
+  if (!user) {
+    return c.json({ error: "User not found" }, 404);
+  }
+
+  return c.json(user);
+});
+
 app.delete("/users/:id", (c) => {
   const id = parseInt(c.req.param("id"));
 
   if (isNaN(id)) {
-    return c.json({ error: "Invalid ID: number expected." }, 400);
+    return c.json({ error: "Invalid user ID format." }, 400);
   }
 
   const user = Data.shared.deleteUser(id);

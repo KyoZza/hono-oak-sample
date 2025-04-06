@@ -69,11 +69,26 @@ router
     ctx.response.status = 201;
     ctx.response.body = user;
   })
+  .get("/users/:id", (ctx) => {
+    const id = parseInt(ctx.params.id);
+
+    if (isNaN(id)) {
+      ctx.throw(400, "Invalid user ID format.");
+    }
+
+    const user = Data.shared.deleteUser(id);
+
+    if (!user) {
+      ctx.throw(404, `User not found.`);
+    }
+
+    ctx.response.body = user;
+  })
   .delete("/users/:id", (ctx) => {
     const id = parseInt(ctx.params.id);
 
     if (isNaN(id)) {
-      ctx.throw(400, "Invalid ID: number expected.");
+      ctx.throw(400, "Invalid user ID format.");
     }
 
     const user = Data.shared.deleteUser(id);
