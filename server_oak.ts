@@ -35,6 +35,25 @@ app.use(async (ctx, next) => {
   }
 });
 
+// authentication middlewar
+app.use(async (ctx, next) => {
+  const { pathname } = ctx.request.url;
+
+  if (pathname.startsWith("/users")) {
+    const apiKey = ctx.request.headers.get("X-API-key");
+    const validApiKey = Deno.env.get("API_KEY") ?? "dummy-key";
+
+    if (!apiKey || apiKey !== validApiKey) {
+      console.warn("Authentication failed: Invalid or missing API key");
+      ctx.throw(401, "Unauthorized");
+    }
+  }
+
+  console.log("Authentication successful");
+
+  await next();
+});
+
 router
   .get("/", (ctx) => {
     ctx.response.body =

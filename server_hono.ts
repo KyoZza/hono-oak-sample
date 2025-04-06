@@ -14,6 +14,21 @@ app.use("*", async (c, next) => {
   console.log(`=> Response status: ${c.res.status} (${ms}ms)`);
 });
 
+// authentication middlewar
+app.use("/users/*", async (c, next) => {
+  const apiKey = c.req.header("X-API-Key");
+  const validApiKey = Deno.env.get("API_KEY") ?? "dummy-key";
+
+  if (!apiKey || apiKey !== validApiKey) {
+    console.warn("Authentication failed: Invalid or missing API key");
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  console.log("Authentication successful");
+
+  await next();
+});
+
 app.get("/", (c) => {
   return c.text("Welcome! Try GET /users, POST /users, or DELETE /users/:id");
 });
