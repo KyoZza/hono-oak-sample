@@ -5,6 +5,7 @@ import { User } from "./user.ts";
 const app = new Application();
 const router = new Router();
 
+// logger middleware
 app.use(async (ctx, next) => {
   console.log(`[${ctx.request.method}] - ${ctx.request.url.pathname}`);
 
@@ -35,7 +36,7 @@ app.use(async (ctx, next) => {
   }
 });
 
-// authentication middlewar
+// authentication middleware
 app.use(async (ctx, next) => {
   const { pathname } = ctx.request.url;
 

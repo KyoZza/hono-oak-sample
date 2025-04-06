@@ -4,6 +4,7 @@ import { Data } from "./data.ts";
 
 const app = new Hono();
 
+// logger middleware
 app.use("*", async (c, next) => {
   console.log(`[${c.req.method}] - ${c.req.url}`);
 
@@ -14,7 +15,7 @@ app.use("*", async (c, next) => {
   console.log(`=> Response status: ${c.res.status} (${ms}ms)`);
 });
 
-// authentication middlewar
+// authentication middleware
 app.use("/users/*", async (c, next) => {
   const apiKey = c.req.header("X-API-Key");
   const validApiKey = Deno.env.get("API_KEY") ?? "dummy-key";
