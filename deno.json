@@ -4,7 +4,9 @@
     "oak": "deno run --watch --env-file=.env --allow-env --allow-net server_oak.ts"
   },
   "imports": {
-    "@hono/hono": "jsr:@hono/hono@^4.7.5",
-    "@oak/oak": "jsr:@oak/oak@^17.1.4"
+    "@hono/hono": "jsr:@hono/hono@^4.7.6",
+    "@oak/oak": "jsr:@oak/oak@^17.1.4",
+    "@valibot/valibot": "jsr:@valibot/valibot@^1.0.0",
+    "zod": "npm:zod@^4.0.0-beta.20250412T085909"
   }
 }
