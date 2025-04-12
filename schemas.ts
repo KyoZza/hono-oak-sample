@@ -20,7 +20,7 @@ export const UserQuerySchema = z.object({
 
 /**  Schema for route parameters on /users/:id routes */
 export const UserIdParamSchema = z.object({
-  id: z.coerce.number().nonnegative().pipe(z.int()),
+  id: z.coerce.number().positive().pipe(z.int()),
 });
 
 /** Schema for the request body on POST /users */

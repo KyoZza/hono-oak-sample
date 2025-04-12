@@ -1,5 +1,5 @@
 export class User {
-  static #autoincrementId = 0;
+  static #autoincrementId = 1;
   id: number;
   name: string;
 
