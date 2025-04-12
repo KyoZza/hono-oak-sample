@@ -14,6 +14,7 @@
     "jsr:@std/path@1": "1.0.8",
     "jsr:@valibot/valibot@1": "1.0.0",
     "npm:path-to-regexp@^6.3.0": "6.3.0",
+    "npm:postgres@^3.4.5": "3.4.5",
     "npm:zod@^4.0.0-beta.20250412T085909": "4.0.0-beta.20250412T085909"
   },
   "jsr": {
@@ -78,6 +79,9 @@
     "path-to-regexp@6.3.0": {
       "integrity": "sha512-Yhpw4T9C6hPpgPeA28us07OJeqZ5EzQTkbfwuhsUg0c237RomFoETJgmp2sa3F/41gfLE6G5cqcYwznmeEeOlQ=="
     },
+    "postgres@3.4.5": {
+      "integrity": "sha512-cDWgoah1Gez9rN3H4165peY9qfpEo+SA61oQv65O3cRUE1pOEoJWwddwcqKE8XZYjbblOJlYDlLV4h67HrEVDg=="
+    },
     "zod@4.0.0-beta.20250412T085909": {
       "integrity": "sha512-W4OjoCnF5XTuljw4X6Hh3Inp45Ug7mmCWzWfFPv+RZcSIAGz7OPqBKOEDtLjfnJAvoxvY3vO0SkxH1zr0Md/Ag==",
       "dependencies": [
@@ -90,6 +94,7 @@
       "jsr:@hono/hono@^4.7.6",
       "jsr:@oak/oak@^17.1.4",
       "jsr:@valibot/valibot@1",
+      "npm:postgres@^3.4.5",
       "npm:zod@^4.0.0-beta.20250412T085909"
     ]
   }
