@@ -1,9 +1,17 @@
 import { Application, HttpError, Router } from "@oak/oak";
 import { Data } from "./data.ts";
-import { User } from "./user.ts";
+import {
+  CreateUserPayload,
+  CreateUserSchema,
+  UserIdParam,
+  UserIdParamSchema,
+  UserQuery,
+  UserQuerySchema,
+} from "./schemas.ts";
+import { validate, type ValidatedRequest } from "./validate.ts";
 
-const app = new Application();
-const router = new Router();
+const app = new Application<ValidatedRequest>();
+const router = new Router<ValidatedRequest>();
 
 // logger middleware
 app.use(async (ctx, next) => {
@@ -21,12 +29,12 @@ app.use(async (ctx, next) => {
   try {
     await next();
   } catch (error) {
-    const { message, status } = error as HttpError;
+    const { message, status, ...rest } = error as HttpError;
 
     // Check if it's an HttpError thrown by ctx.throw
     if (status) {
       ctx.response.status = status;
-      ctx.response.body = { error: message };
+      ctx.response.body = { error: message, ...rest };
     } else {
       // Generic internal server error
       console.error("Unhandled Error:", error);
@@ -60,12 +68,12 @@ router
     ctx.response.body =
       "Welcome! Try GET /users, POST /users, or DELETE /users/:id";
   })
-  .get("/users", (ctx) => {
-    const nameFilter = ctx.request.url.searchParams.get("name");
+  .get("/users", validate("query", UserQuerySchema), (ctx) => {
+    const { name } = ctx.state.validatedQuery as UserQuery;
 
-    if (nameFilter) {
-      const users = Data.shared.users.filter(({ name }) =>
-        name.toLowerCase().includes(nameFilter.toLowerCase())
+    if (name) {
+      const users = Data.shared.users.filter((user) =>
+        user.name.toLowerCase().includes(name.toLowerCase())
       );
 
       ctx.response.body = users;
@@ -75,37 +83,16 @@ router
     ctx.response.body = Data.shared.users;
     ctx.response.type = "json"; //  Explicitly set type, though often inferred
   })
-  .post("/users", async (ctx) => {
-    if (!ctx.request.hasBody) {
-      ctx.throw(415, "Request body is required.");
-    }
+  .post("/users", validate("json", CreateUserSchema), (ctx) => {
+    const payload = ctx.state.validatedJson as CreateUserPayload;
 
-    const { body } = ctx.request;
-
-    if (body.type() !== "json") {
-      ctx.throw(415, "Request body must be JSON");
-    }
-
-    const payload: Partial<User> = await body.json();
-
-    if (typeof payload.name !== "string" || payload.name.trim() === "") {
-      ctx.throw(
-        400,
-        "Invalid user data: 'name' is required and must be a non-empty string.",
-      );
-    }
-
-    const user = Data.shared.createUser(payload.name!);
+    const user = Data.shared.createUser(payload.name);
 
     ctx.response.status = 201;
     ctx.response.body = user;
   })
-  .get("/users/:id", (ctx) => {
-    const id = parseInt(ctx.params.id);
-
-    if (isNaN(id)) {
-      ctx.throw(400, "Invalid user ID format.");
-    }
+  .get("/users/:id", validate("params", UserIdParamSchema), (ctx) => {
+    const { id } = ctx.state.validatedParams as UserIdParam;
 
     const user = Data.shared.deleteUser(id);
 
@@ -115,12 +102,8 @@ router
 
     ctx.response.body = user;
   })
-  .delete("/users/:id", (ctx) => {
-    const id = parseInt(ctx.params.id);
-
-    if (isNaN(id)) {
-      ctx.throw(400, "Invalid user ID format.");
-    }
+  .delete("/users/:id", validate("params", UserIdParamSchema), (ctx) => {
+    const { id } = ctx.state.validatedParams as UserIdParam;
 
     const user = Data.shared.deleteUser(id);
 
