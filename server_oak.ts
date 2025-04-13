@@ -1,5 +1,5 @@
 import { Application, HttpError, Router } from "@oak/oak";
-import { Data } from "./data.ts";
+// import { Data } from "./data.ts";
 import {
   CreateUserPayload,
   CreateUserSchema,
@@ -9,9 +9,36 @@ import {
   UserQuerySchema,
 } from "./schemas.ts";
 import { validate, type ValidatedRequest } from "./validate.ts";
+import postgres from "postgres";
 
-const app = new Application<ValidatedRequest>();
+interface ApplicationState {
+  sql: postgres.Sql;
+}
+
+const DB_HOST = Deno.env.get("DB_HOST") || "localhost";
+const DB_PORT = parseInt(Deno.env.get("DB_PORT") ?? "5432");
+const DB_USER = Deno.env.get("DB_USER");
+const DB_PASSWORD = Deno.env.get("DB_PASSWORD");
+const DB_NAME = Deno.env.get("DB_NAME");
+
+console.log(
+  `Initializing connection to ${DB_USER}@${DB_HOST}:${DB_PORT}/${DB_NAME}`,
+);
+
+const sql = postgres({
+  host: DB_HOST,
+  port: DB_PORT,
+  user: DB_USER,
+  password: DB_PASSWORD,
+  database: DB_NAME,
+  onnotice: (notice) => console.log("DB Notice:", notice.message),
+});
+console.log("Database client initialized.");
+
+const app = new Application<ApplicationState>();
 const router = new Router<ValidatedRequest>();
+
+app.state.sql = sql;
 
 // logger middleware
 app.use(async (ctx, next) => {
@@ -29,17 +56,27 @@ app.use(async (ctx, next) => {
   try {
     await next();
   } catch (error) {
-    const { message, status, ...rest } = error as HttpError;
+    console.log({ error });
 
-    // Check if it's an HttpError thrown by ctx.throw
-    if (status) {
-      ctx.response.status = status;
-      ctx.response.body = { error: message, ...rest };
-    } else {
-      // Generic internal server error
-      console.error("Unhandled Error:", error);
+    if (error instanceof HttpError) {
+      const { message, status, ...rest } = error;
+
+      // Check if it's an HttpError thrown by ctx.throw
+      if (status) {
+        ctx.response.status = status;
+        ctx.response.body = { error: message, ...rest };
+      } else {
+        // Generic internal server error
+        console.error("Unhandled Error:", error);
+        ctx.response.status = 500;
+        ctx.response.body = { error: "Internal Server Error" };
+      }
+    } else if (error instanceof postgres.PostgresError) {
+      const { code, message } = error;
+      console.error("Database Error:", { code, message });
+
       ctx.response.status = 500;
-      ctx.response.body = { error: "Internal Server Error" };
+      ctx.response.body = { error: "Database operation failed" };
     }
   }
 });
@@ -68,53 +105,88 @@ router
     ctx.response.body =
       "Welcome! Try GET /users, POST /users, or DELETE /users/:id";
   })
-  .get("/users", validate("query", UserQuerySchema), (ctx) => {
+  .get("/users", validate("query", UserQuerySchema), async (ctx) => {
     const { name } = ctx.state.validatedQuery as UserQuery;
+    const { sql } = ctx.app.state as ApplicationState;
 
-    if (name) {
-      const users = Data.shared.users.filter((user) =>
-        user.name.toLowerCase().includes(name.toLowerCase())
-      );
+    // const users = Data.shared.users.filter((user) =>
+    //   user.name.toLowerCase().includes(name.toLowerCase())
+    // );
 
-      ctx.response.body = users;
-      return;
-    }
+    const nameQuery = (name?: string) =>
+      name ? sql`WHERE LOWER(name) like ${name.toLowerCase() + "%"}` : sql``;
 
-    ctx.response.body = Data.shared.users;
-    ctx.response.type = "json"; //  Explicitly set type, though often inferred
+    const res = await sql`
+      SELECT id, name FROM app_users 
+      ${nameQuery(name)}
+      ORDER BY id;
+    `;
+
+    ctx.response.body = res;
   })
-  .post("/users", validate("json", CreateUserSchema), (ctx) => {
+  .post("/users", validate("json", CreateUserSchema), async (ctx) => {
     const payload = ctx.state.validatedJson as CreateUserPayload;
+    const { sql } = ctx.app.state as ApplicationState;
 
-    const user = Data.shared.createUser(payload.name);
+    // const user = Data.shared.createUser(payload.name);
+
+    const res = await sql`
+      INSERT INTO app_users (name) 
+      VALUES (${payload.name})
+      RETURNING id, name
+    `;
 
     ctx.response.status = 201;
-    ctx.response.body = user;
+    ctx.response.body = res;
   })
-  .get("/users/:id", validate("params", UserIdParamSchema), (ctx) => {
+  .get("/users/:id", validate("params", UserIdParamSchema), async (ctx) => {
     const { id } = ctx.state.validatedParams as UserIdParam;
+    const { sql } = ctx.app.state as ApplicationState;
 
-    const user = Data.shared.deleteUser(id);
+    // const user = Data.shared.deleteUser(id);
+    const res = await sql`SELECT id, name FROM app_users WHERE id = ${id}`;
+    console.log({ res });
 
-    if (!user) {
+    if (!res.length) {
       ctx.throw(404, `User not found.`);
     }
 
-    ctx.response.body = user;
+    ctx.response.body = res[0];
   })
-  .delete("/users/:id", validate("params", UserIdParamSchema), (ctx) => {
+  .delete("/users/:id", validate("params", UserIdParamSchema), async (ctx) => {
     const { id } = ctx.state.validatedParams as UserIdParam;
+    const { sql } = ctx.app.state as ApplicationState;
 
-    const user = Data.shared.deleteUser(id);
+    // const user = Data.shared.deleteUser(id);
 
-    if (!user) {
-      ctx.throw(404, `User with ID ${id} doesn't exit.`);
+    const res =
+      await sql`DELETE FROM app_users WHERE id = ${id} RETURNING id, name`;
+
+    if (res.count === 0) {
+      ctx.throw(404, `User not found`);
     }
 
-    ctx.response.body = { message: "User deleted!", user };
+    ctx.response.body = { message: "User deleted!", user: res[0] };
   });
 
 app.use(router.routes());
 app.use(router.allowedMethods());
+
+async function shutdown() {
+  console.log("\nShutting down server and closing database pool...");
+
+  try {
+    await app.state.sql.end({ timeout: 5 });
+
+    console.log("Database pool closed.");
+  } catch (error) {
+    console.error("Error closing database pool:", error);
+  }
+
+  Deno.exit();
+}
+
+Deno.addSignalListener("SIGINT", shutdown);
+Deno.addSignalListener("SIGTERM", shutdown);
 
 app.listen({ port: 8080 });
