@@ -1,10 +1,10 @@
 import { Application, HttpError, Router } from "@oak/oak";
 // import { Data } from "./data.ts";
 import {
-  CreateUserPayload,
-  CreateUserSchema,
+  UserBodySchema,
   UserIdParam,
   UserIdParamSchema,
+  UserPayload,
   UserQuery,
   UserQuerySchema,
 } from "./schemas.ts";
@@ -124,8 +124,8 @@ router
 
     ctx.response.body = res;
   })
-  .post("/users", validate("json", CreateUserSchema), async (ctx) => {
-    const payload = ctx.state.validatedJson as CreateUserPayload;
+  .post("/users", validate("json", UserBodySchema), async (ctx) => {
+    const payload = ctx.state.validatedJson as UserPayload;
     const { sql } = ctx.app.state as ApplicationState;
 
     // const user = Data.shared.createUser(payload.name);
@@ -145,7 +145,6 @@ router
 
     // const user = Data.shared.deleteUser(id);
     const res = await sql`SELECT id, name FROM app_users WHERE id = ${id}`;
-    console.log({ res });
 
     if (!res.length) {
       ctx.throw(404, `User not found.`);
@@ -153,6 +152,29 @@ router
 
     ctx.response.body = res[0];
   })
+  .put(
+    "/users/:id",
+    validate("params", UserIdParamSchema),
+    validate("json", UserBodySchema),
+    async (ctx) => {
+      const { id } = ctx.state.validatedParams as UserIdParam;
+      const { name } = ctx.state.validatedJson as UserPayload;
+      const { sql } = ctx.app.state as ApplicationState;
+
+      const res = await sql`
+          UPDATE app_users 
+          SET name = ${name} 
+          WHERE id = ${id}
+          RETURNING id, name
+        `;
+
+      if (res.count === 0) {
+        ctx.throw(404, `User not found.`);
+      }
+
+      ctx.response.body = res[0];
+    },
+  )
   .delete("/users/:id", validate("params", UserIdParamSchema), async (ctx) => {
     const { id } = ctx.state.validatedParams as UserIdParam;
     const { sql } = ctx.app.state as ApplicationState;

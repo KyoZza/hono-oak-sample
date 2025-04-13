@@ -23,8 +23,8 @@ export const UserIdParamSchema = z.object({
   id: z.coerce.number().positive().pipe(z.int()),
 });
 
-/** Schema for the request body on POST /users */
-export const CreateUserSchema = z.object({
+/** Schema for the request body on POST /users or PUT /users/:id */
+export const UserBodySchema = z.object({
   name: z.string("Name is required and must be a string.")
     .trim()
     .nonempty("Name cannot be empty."),
@@ -38,5 +38,5 @@ export type UserQuery = z.infer<typeof UserQuerySchema>;
 // export type UserQuery = InferOutput<typeof UserQuerySchema>;
 export type UserIdParam = z.infer<typeof UserIdParamSchema>;
 // export type UserIdParam = InferOutput<typeof UserIdParamSchema>;
-export type CreateUserPayload = z.infer<typeof CreateUserSchema>;
+export type UserPayload = z.infer<typeof UserBodySchema>;
 // export type CreateUserPayload = InferOutput<typeof CreateUserSchema>;
